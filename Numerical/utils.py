@@ -1,5 +1,5 @@
 # Necessary imports
-import numpy as np  # np.dot
+from numpy import dot, zeros
 
 # Additional tools
 from copy import deepcopy
@@ -25,8 +25,8 @@ def compute_cost(X, y, w, b):
     cost = 0.0
     for i in range(m):
         # Calculate the error/cost or each data. And sum the whole of them
-        y_hat = np.dot(X[i], w) + b  # (n,)(n,) = scalar (see np.dot)
-        cost = cost + (y_hat - y[i]) ** 2  # scalar
+        y_hat = dot(X[i], w) + b  # (n,)(n,) = scalar (see np.dot)
+        cost += (y_hat - y[i]) ** 2  # scalar
     cost = cost / (2 * m)  # scalar
     return cost
 
@@ -45,18 +45,18 @@ def compute_gradient(X, y, w, b):
       dj_db (scalar):       The gradient of the cost w.r.t. the parameter b.
     """
     m, n = X.shape  # (number of examples, number of features)
-    dj_dw = np.zeros((n,))
+    dj_dw = zeros((n,))
     dj_db = 0.
 
     for i in range(m):
         # Compute for each input data
-        y_hat = np.dot(X[i], w) + b
+        y_hat = dot(X[i], w) + b
         err = y_hat - y[i]
         for j in range(n):
             # Compute for each parameter w_i
-            dj_dw[j] = dj_dw[j] + err * X[i, j]
-        # compute for the b parameter
-        dj_db = dj_db + err
+            dj_dw[j] += err * X[i, j]
+        # compute the b parameter
+        dj_db += err
     dj_dw = dj_dw / m
     dj_db = dj_db / m
 
@@ -65,6 +65,8 @@ def compute_gradient(X, y, w, b):
 
 def gradient_descent(X,
                      y,
+                     X_test,
+                     y_test,
                      w_in,
                      b_in,
                      cost_function,
@@ -76,8 +78,10 @@ def gradient_descent(X,
     num_iters gradient steps with learning rate alpha
 
     Args:
-      X (ndarray (m,n))   : Data, m examples with n features
-      y (ndarray (m,))    : target values
+      X (ndarray (m,n))   : Data, m examples with n features (Train data)
+      y (ndarray (m,))    : target values (Train data)
+      X_test (ndarray (m,n))   : Data, m examples with n features (Test data)
+      y_test (ndarray (m,))    : target values (Test data)
       w_in (ndarray (n,)) : initial model parameters
       b_in (scalar)       : initial model parameter
       cost_function       : function to compute cost
@@ -88,13 +92,17 @@ def gradient_descent(X,
     Returns:
       w (ndarray (n,)) : Updated values of parameters
       b (scalar)       : Updated value of parameter
+      j_history        : Historic evolution of the error during the process
+      test_history     : Historic error in the test set
       """
 
     # An array to store cost J and w's at each iteration primarily for graphing later
     j_history = []
+    test_history = []
     w = deepcopy(w_in)  # avoid modifying global w within function
     b = b_in
-    for i in range(num_iters):
+    min_cost = 5000
+    for i in range(num_iters+1):
 
         # Calculate the gradient and update the parameters
         dj_db, dj_dw = gradient_function(X, y, w, b)
@@ -106,9 +114,14 @@ def gradient_descent(X,
         # Save cost J at each iteration
         if i < 100000:  # prevent resource exhaustion
             j_history.append(cost_function(X, y, w, b))
+            test_cost = cost_function(X_test, y_test, w, b)
+            if test_cost < min_cost:
+                min_cost = test_cost
+                min_cost_iteration = i
+            test_history.append(test_cost)
 
         # Print cost every at intervals 10 times or as many iterations if < 10
         if i % ceil(num_iters / 10) == 0:
-            print(f"Iteration {i:4d}: Cost {j_history[-1]:8.2f}   ")
+            print(f"Iteration {i:5d}: Cost {j_history[-1]:4.2f}. TEST {test_history[-1]:4.2f}")
 
-    return w, b, j_history  # return final w,b and J history for graphing
+    return w, b, j_history, test_history, min_cost, min_cost_iteration  # return final w,b and J history for graphing
